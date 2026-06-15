@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/app", "destination": "/app.html" },
+    { "source": "/app", "destination": "/swim_coach.html" },
     { "source": "/", "destination": "/index.html" }
   ]
 }
