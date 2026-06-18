@@ -25,13 +25,28 @@ export async function getUserAccess(userId) {
   if (!data) return { inTrial: false, hasPaid: false, trialDaysLeft: 0 };
 
   const now = new Date();
-  const createdAt = new Date(data.created_at);
-  const daysSinceCreation = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
-  const trialDaysLeft = Math.max(0, 7 - daysSinceCreation);
+
+  // Use paid_at if exists, otherwise fall back to has_access
+  const hasPaid = !!data.paid_at || (data.has_access === true && !data.trial_ends_at);
+
+  // Trial: has_access=true and trial_ends_at is in the future
+  let inTrial = false;
+  let trialDaysLeft = 0;
+  if (data.trial_ends_at) {
+    const trialEnd = new Date(data.trial_ends_at);
+    trialDaysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+    inTrial = trialDaysLeft > 0 && !hasPaid;
+  } else if (!hasPaid) {
+    // Fallback: calculate from created_at
+    const createdAt = new Date(data.created_at);
+    const daysSince = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+    trialDaysLeft = Math.max(0, 7 - daysSince);
+    inTrial = trialDaysLeft > 0;
+  }
 
   return {
-    hasPaid: !!data.paid_at,
-    inTrial: !data.paid_at && trialDaysLeft > 0,
+    hasPaid,
+    inTrial,
     trialDaysLeft,
     lang: data.lang || 'fr',
   };
