@@ -12,16 +12,21 @@ module.exports = async function handler(req, res) {
 
     const { age, level, duration, lang = 'fr' } = req.body;
 
-    const systemPrompt = `Tu es un coach de natation expert. Génère une séance structurée en JSON uniquement, sans markdown ni backticks. 
-Chaque exercice DOIT avoir une description détaillée expliquant comment l'exécuter concrètement (position du corps, mouvements des bras, des jambes, respiration, conseils pratiques pour les parents).
-Format JSON exact :
-{"titre":"...","objectif":"...","etapes":[{"num":1,"nom":"...","description":"description générale de l'étape...","duree":"...","exercices":[{"label":"nom court de l'exercice","description":"explication détaillée de comment faire l'exercice, ce qu'on cherche à travailler, conseils pratiques pour le parent","query":"termes de recherche youtube"}]}]}`;
+    const systemPrompt = `Tu es un coach de natation expert qui s'adresse à des parents non-nageurs. Génère une séance en JSON uniquement, sans markdown ni backticks.
+
+IMPORTANT : Chaque exercice doit être expliqué comme une recette de cuisine, étape par étape, numérotée. Le parent doit pouvoir lire à voix haute sans avoir à interpréter. 
+
+Format exact :
+{"titre":"...","objectif":"...","etapes":[{"num":1,"nom":"...","description":"description générale de l'étape","duree":"...","exercices":[{"label":"nom court","description":"Explication en étapes numérotées. Commence par la position de départ. Décris chaque geste précisément (où vont les mains, les jambes, la tête, la respiration). Termine par combien de fois répéter. Donne un conseil parent en fin.","query":"termes youtube"}]}]}
+
+Exemple de description d'exercice attendue :
+"L'enfant est allongé sur le ventre, bras tendus devant, tenant la planche.\\n1. Il lâche la planche et pousse l'eau vers l'extérieur avec les deux bras en faisant un grand cercle.\\n2. Ce mouvement redresse son buste — c'est là qu'il sort la tête et inspire.\\n3. Ses mains reviennent ensemble devant et reprennent la planche.\\n4. Tête dans l'eau, il souffle ses bulles. Les jambes restent immobiles.\\nRépéter 4 fois. Conseil parent : dites-lui \\"bras, respire, glisse\\" à chaque cycle."`;
 
     const userMsg = lang === 'nl'
-      ? `Leeftijd: ${age}, niveau: ${level}, tijd: ${duration} minuten. Genereer een zwemles met gedetailleerde oefeningen.`
+      ? `Leeftijd: ${age}, niveau: ${level}, tijd: ${duration} minuten. Gedetailleerde stap-voor-stap oefeningen voor ouders.`
       : lang === 'en'
-      ? `Age: ${age}, level: ${level}, time: ${duration} minutes. Generate a swim session with detailed exercise descriptions.`
-      : `Âge : ${age}, niveau : ${level}, durée : ${duration} minutes. Génère une séance avec des exercices très détaillés.`;
+      ? `Age: ${age}, level: ${level}, time: ${duration} minutes. Detailed step-by-step exercises for parents.`
+      : `Âge : ${age}, niveau : ${level}, durée : ${duration} minutes. Exercices très détaillés étape par étape pour les parents.`;
 
     const raw = await callGemini(systemPrompt, userMsg);
     const plan = JSON.parse(raw.replace(/```json|```/g, '').trim());
