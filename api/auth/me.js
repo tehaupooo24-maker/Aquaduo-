@@ -1,11 +1,9 @@
-import { getUserFromToken, getUserAccess } from '../_supabase.js';
+const { getUserFromToken, getUserAccess } = require('../_supabase');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
-
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Non autorisé' });
-
   try {
     const user = await getUserFromToken(token);
     const access = await getUserAccess(user.id);
@@ -13,4 +11,4 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(401).json({ error: e.message });
   }
-}
+};
