@@ -1,6 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/progress/:id", "destination": "/api/progress" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/progress/:id", "destination": "/api/progress" }
   ]
 }
