@@ -10,20 +10,23 @@ module.exports = async function handler(req, res) {
     const access = await getUserAccess(user.id);
     if (!access.hasPaid && !access.inTrial) return res.status(403).json({ error: 'NO_ACCESS' });
 
-    const { age, level, duration, lang = 'fr' } = req.body;
+    const { age, level, duration, lang = 'fr', coachExos = null } = req.body;
 
-    const systemPrompt = `Tu es un coach de natation expert. Reponds UNIQUEMENT en JSON valide, sans markdown, sans backticks, sans commentaires.
+    const exosInstruction = coachExos
+      ? `IMPORTANT : La seance doit imperativement inclure et detailler ces exercices issus de l analyse du coach : ${coachExos}. Ne pas en inventer de nouveaux, uniquement detailler ceux-ci.`
+      : '';
 
-REGLE ABSOLUE : chaque exercice DOIT avoir un champ description NON VIDE avec minimum 3 phrases expliquant comment faire l exercice etape par etape. Sans description = reponse invalide.
-
-Format JSON :
-{"titre":"...","objectif":"...","etapes":[{"num":1,"nom":"...","description":"description generale de l etape en 1-2 phrases","duree":"X minutes","exercices":[{"label":"nom court 3-5 mots","description":"1. Position de depart : l enfant fait ceci. 2. Il fait ensuite cela avec ses bras ou jambes. 3. Pour la respiration faire ainsi. 4. Repeter X fois. Conseil pour le parent : dire ceci.","query":"mots cles youtube natation"}]}]}`;
+    const systemPrompt = `Tu es un coach de natation expert. Reponds UNIQUEMENT en JSON valide, sans markdown, sans backticks.
+REGLE : chaque exercice DOIT avoir un champ description avec les etapes numerotees 1. 2. 3. expliquant comment faire.
+${exosInstruction}
+Format JSON strict :
+{"titre":"...","objectif":"...","etapes":[{"num":1,"nom":"...","description":"description generale","duree":"X min","exercices":[{"label":"nom court 3-5 mots","description":"1. Position de depart. 2. Mouvement des bras ou jambes. 3. Respiration. 4. Repeter X fois. Conseil parent.","query":"mots cles youtube natation"}]}]}`;
 
     const userMsg = lang === 'nl'
-      ? `Maak een zwemles. Leeftijd: ${age}, niveau: ${level}, tijd: ${duration} minuten. Elke oefening moet gedetailleerde stap-voor-stap instructies hebben.`
+      ? `Leeftijd: ${age}, niveau: ${level}, tijd: ${duration} minuten.`
       : lang === 'en'
-      ? `Create a swim session. Age: ${age}, level: ${level}, time: ${duration} minutes. Every exercise must have detailed step-by-step instructions.`
-      : `Cree une seance de natation. Age : ${age}, niveau : ${level}, duree : ${duration} minutes. Chaque exercice doit avoir des instructions detaillees etape par etape.`;
+      ? `Age: ${age}, level: ${level}, time: ${duration} minutes.`
+      : `Age : ${age}, niveau : ${level}, duree : ${duration} minutes.`;
 
     const raw = await callGemini(systemPrompt, userMsg);
     const clean = raw.replace(/```json|```/g, '').trim();
