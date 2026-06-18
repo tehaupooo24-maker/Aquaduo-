@@ -1,6 +1,5 @@
 {
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "stripe": "^14.0.0"
-  }
+  "rewrites": [
+    { "source": "/api/progress/:id", "destination": "/api/progress" }
+  ]
 }
