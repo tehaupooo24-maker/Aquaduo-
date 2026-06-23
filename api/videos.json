@@ -1,0 +1,15 @@
+{
+  "flottaison_dos": { "id": "jb2P6C8HOi4", "start": 14, "end": 68 },
+  "flottaison_ventre": { "id": "8il5TsUK9Tk", "start": 40, "end": 94 },
+  "immersion": { "id": "jCKDGZfV4rA", "start": 38, "end": 75 },
+  "nager_sous_eau": { "id": "Siuc8VUAg34", "start": 11, "end": 77 },
+  "glisse": { "id": "wl-R_iyRXgw", "start": 18, "end": 53 },
+  "battement_jambes_petit": { "id": "2W-9OgfluGM", "start": 25, "end": 127 },
+  "battement_jambes_grand": { "id": "qIZ1yoGhEw8", "start": 26, "end": 158 },
+  "crawl": { "id": "n2GYlSJQ7NU", "start": 27, "end": 160 },
+  "brasse_jambes": { "id": "8PODPEUBBI8", "start": 60, "end": 165 },
+  "brasse_jambes_respiration": { "id": "8PODPEUBBI8", "start": 218, "end": 290 },
+  "respiration_crawl": { "id": "3S0i9kroZEM", "start": 9, "end": 127 },
+  "dos_crawle": { "id": "MFBPpIKoNSA", "start": 5, "end": 109 },
+  "plongeon": { "id": "l_bTXpBrl8g", "start": 20, "end": 63 }
+}
