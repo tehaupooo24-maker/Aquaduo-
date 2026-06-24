@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏊 Coach Natation IA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #1a1a1a; min-height: 100vh; }
+
+  /* API KEY SCREEN */
+  #apiScreen { position: fixed; inset: 0; background: #f5f7fa; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+  .api-box { background: white; border-radius: 16px; padding: 2rem; max-width: 460px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid #e8eaf0; }
+  .api-box h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+  .api-box p { font-size: 14px; color: #666; margin-bottom: 1.5rem; line-height: 1.6; }
+  .api-input { width: 100%; padding: 10px 14px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 14px; font-family: monospace; margin-bottom: 12px; outline: none; transition: border 0.15s; }
+  .api-input:focus { border-color: #185FA5; }
+  .api-btn { width: 100%; padding: 12px; background: #185FA5; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .api-btn:hover { opacity: 0.9; }
+  .api-note { font-size: 12px; color: #999; margin-top: 10px; text-align: center; }
+
+  /* ── GUIDE ────────────────────────────────────────────────────── */
+  .guide-box { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1rem; box-shadow: var(--shadow); overflow: hidden; }
+  .guide-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--navy); user-select: none; }
+  .guide-header:hover { background: var(--teal-light); }
+  .guide-toggle { font-size: 12px; color: var(--text-muted); transition: transform 0.2s; }
+  .guide-toggle.open { transform: rotate(180deg); }
+  .guide-content { display: none; padding: 0 16px 16px; border-top: 1px solid var(--border); }
+  .guide-content.open { display: block; }
+  .guide-steps { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+  .guide-step { display: flex; gap: 12px; align-items: flex-start; }
+  .guide-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+  .guide-step strong { font-size: 13px; font-weight: 600; color: var(--navy); display: block; margin-bottom: 3px; }
+  .guide-step p { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin: 0; }
+  .guide-step em { color: var(--teal-dark); font-style: normal; font-weight: 500; }
+
+
+  #app { display: none; max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+  .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .app-header-left { display: flex; align-items: center; gap: 12px; }
+  .app-title { font-size: 20px; font-weight: 600; }
+  .app-sub { font-size: 13px; color: #888; margin-top: 2px; }
+  .key-badge { font-size: 11px; background: #e8f4e8; color: #2d7a2d; padding: 4px 10px; border-radius: 20px; cursor: pointer; border: none; font-family: inherit; }
+  .key-badge:hover { background: #d0ecd0; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; background: #eef0f5; border-radius: 10px; padding: 4px; margin-bottom: 1.5rem; }
+  .tab { flex: 1; padding: 9px 4px; text-align: center; font-size: 13px; cursor: pointer; border-radius: 7px; color: #666; transition: all 0.15s; border: none; background: transparent; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .tab.active { background: white; color: #1a1a1a; font-weight: 500; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* CARDS */
+  .card { background: white; border: 1px solid #e8eaf0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  .label { font-size: 13px; color: #666; margin-bottom: 8px; display: block; }
+  .label-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; display: block; }
+
+  /* CHIPS */
+  .chip-grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+  .chip-grid3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .chip { background: #f5f7fa; border: 1px solid #e0e2e8; border-radius: 10px; padding: 10px 8px; text-align: center; cursor: pointer; font-size: 13px; color: #555; transition: all 0.15s; user-select: none; }
+  .chip:hover { border-color: #185FA5; color: #185FA5; }
+  .chip.selected { background: #EBF4FF; border-color: #185FA5; color: #0C447C; font-weight: 500; }
+  .chip .emoji { display: block; font-size: 20px; margin-bottom: 4px; }
+  .chip small { font-size: 11px; color: #999; display: block; margin-top: 2px; }
+  .chip.selected small { color: #4a90c4; }
+
+  /* FORM */
+  textarea { width: 100%; min-height: 90px; font-size: 14px; font-family: inherit; resize: vertical; border: 1px solid #d0d5dd; border-radius: 8px; padding: 10px 12px; outline: none; transition: border 0.15s; color: #1a1a1a; background: white; }
+  textarea:focus { border-color: #185FA5; }
+  input[type=text] { width: 100%; font-size: 14px; padding: 10px 12px; border: 1px solid #d0d5dd; border-radius: 8px; font-family: inherit; outline: none; transition: border 0.15s; color: #1a1a1a; background: white; margin-top: 6px; }
+  input[type=text]:focus { border-color: #185FA5; }
+
+  /* UPLOAD */
+  .upload-zone { border: 2px dashed #c8d0dc; border-radius: 10px; padding: 1.25rem; text-align: center; cursor: pointer; color: #888; font-size: 13px; background: #f9fafb; transition: all 0.15s; }
+  .upload-zone:hover { border-color: #185FA5; color: #185FA5; background: #f0f6ff; }
+  .upload-zone.has-file { border-style: solid; border-color: #185FA5; background: #EBF4FF; color: #0C447C; }
+  .upload-icon { font-size: 28px; display: block; margin-bottom: 6px; }
+
+  /* BUTTONS */
+  .btn-primary { width: 100%; padding: 13px; font-size: 15px; font-weight: 600; background: #185FA5; color: white; border: none; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s; font-family: inherit; }
+  .btn-primary:hover { background: #0e4a8a; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-outline { font-size: 13px; padding: 8px 14px; border: 1px solid #d0d5dd; border-radius: 8px; background: white; cursor: pointer; color: #444; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; font-family: inherit; }
+  .btn-outline:hover { background: #f5f7fa; border-color: #b0b5be; }
+  .btn-outline.danger { color: #c0392b; border-color: #e8c0bc; }
+  .btn-outline.danger:hover { background: #fdf0ef; }
+  .btn-save { width: 100%; padding: 10px; margin-top: 1rem; font-size: 14px; border: 1px solid #185FA5; border-radius: 8px; background: transparent; color: #185FA5; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s; font-family: inherit; }
+  .btn-save:hover { background: #EBF4FF; }
+  .btn-yt { font-size: 12px; padding: 5px 11px; border: 1px solid #cc0000; border-radius: 8px; background: transparent; cursor: pointer; color: #cc0000; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s; text-decoration: none; font-family: inherit; }
+  .btn-yt:hover { background: #fff0f0; }
+
+  /* RESULT */
+  .result-box { background: white; border: 1px solid #e8eaf0; border-radius: 12px; padding: 1.5rem; margin-top: 1.25rem; display: none; }
+  .result-box.visible { display: block; }
+  .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f0f2f5; }
+  .result-header-icon { width: 36px; height: 36px; background: #EBF4FF; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .result-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  .result-body { font-size: 14px; color: #333; line-height: 1.8; white-space: pre-wrap; }
+  .result-body ul, .result-body ol { margin-left: 20px; margin-bottom: 10px; }
+  .result-body li { margin-bottom: 4px; }
+  .yt-section { margin-top: 1rem; display: none; }
+  .yt-label { font-size: 12px; color: #888; margin-bottom: 8px; }
+  .yt-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* CARNET */
+  .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1rem; }
+  .stat-box { background: white; border: 1px solid #e8eaf0; border-radius: 10px; padding: 1rem; text-align: center; }
+  .stat-num { font-size: 24px; font-weight: 600; color: #185FA5; }
+  .stat-lbl { font-size: 12px; color: #888; margin-top: 3px; }
+  .stars { display: flex; gap: 6px; margin-top: 10px; }
+  .star { font-size: 24px; cursor: pointer; color: #d0d5dd; transition: color 0.1s; user-select: none; }
+  .star.lit { color: #f0a500; }
+  .progress-item { background: white; border: 1px solid #e8eaf0; border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; position: relative; }
+  .p-date { font-size: 12px; color: #aaa; margin-bottom: 5px; }
+  .p-note { font-size: 14px; color: #333; line-height: 1.6; }
+  .p-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .p-badge.stars-badge { background: #FFF8E7; color: #a07800; }
+  .del-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; transition: color 0.15s; }
+  .del-btn:hover { color: #c0392b; }
+  .empty { text-align: center; padding: 2.5rem; color: #aaa; font-size: 14px; }
+  .empty-icon { font-size: 40px; display: block; margin-bottom: 10px; }
+  .export-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+
+  /* OBJECTIF */
+  .obj-hero { background: linear-gradient(135deg, #185FA5, #2980d9); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; color: white; }
+  .obj-hero-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .obj-hero-sub { font-size: 13px; opacity: 0.8; margin-bottom: 1rem; }
+  .pbar-wrap { background: rgba(255,255,255,0.25); border-radius: 20px; height: 8px; overflow: hidden; }
+  .pbar-fill { background: white; height: 8px; border-radius: 20px; transition: width 0.5s ease; }
+  .pbar-labels { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.85; margin-top: 5px; }
+  .milestone-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f2f5; }
+  .milestone-row:last-child { border-bottom: none; }
+  .m-icon { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #d0d5dd; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; font-size: 11px; }
+  .m-icon.done { background: #2d7a2d; border-color: #2d7a2d; color: white; }
+  .m-icon.current { border-color: #185FA5; background: #EBF4FF; color: #185FA5; }
+  .m-text { font-size: 14px; color: #333; line-height: 1.5; }
+  .m-text.done { color: #999; text-decoration: line-through; }
+  .m-week { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+  .obj-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="apiScreen">
+  <div class="api-box">
+    <div style="font-size:36px;margin-bottom:12px">🏊</div>
+    <h1>Coach Natation IA</h1>
+    <p>Entrez votre clé API Gemini pour démarrer. Elle est sauvegardée dans votre navigateur.</p>
+    <label style="font-size:12px;color:#888;margin-bottom:4px;display:block">Clé Gemini (Analyse &amp; Conseils)</label>
+    <input class="api-input" type="password" id="geminiKeyInput" placeholder="AIza..." autocomplete="off">
+    <button class="api-btn" onclick="saveKey()" style="margin-top:14px">Démarrer →</button>
+    <p class="api-note">🔒 Votre clé reste sur votre appareil, jamais partagée.</p>
+  </div>
+</div>
+
+<div id="app">
+  <div class="app-header">
+    <div class="app-header-left">
+      <span style="font-size:28px">🏊</span>
+      <div>
+        <div class="app-title">Coach Natation</div>
+        <div class="app-sub">Conseils personnalisés</div>
+      </div>
+    </div>
+    <button class="key-badge" onclick="changeKey()">🔑 Changer la clé</button>
+  </div>
+
+  <!-- ── GUIDE D'EMPLOI ── -->
+  <div class="guide-box" id="guideBox">
+    <div class="guide-header" onclick="toggleGuide()">
+      <span>📖 Guide d'utilisation</span>
+      <span class="guide-toggle" id="guideToggle">▼</span>
+    </div>
+    <div class="guide-content" id="guideContent">
+      <div class="guide-steps">
+        <div class="guide-step">
+          <div class="guide-icon">💬</div>
+          <div>
+            <strong>Conseils personnalisés</strong>
+            <p>Choisissez l'âge et le niveau de l'enfant, décrivez les difficultés observées (ou utilisez la dictée vocale 🎙), ajoutez une photo ou vidéo en option, puis cliquez <em>"Obtenir les conseils"</em>. Le coach IA analyse et propose des exercices précis avec des liens vidéo.</p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-icon">📅</div>
+          <div>
+            <strong>Séance du jour</strong>
+            <p>Sélectionnez l'âge, le niveau et la durée disponible, puis cliquez <em>"Générer la séance"</em>. Vous obtenez un programme complet étape par étape adapté à la piscine. Après les conseils, vous pouvez aussi cliquer <em>"Générer une séance basée sur ces conseils"</em> pour une séance sur mesure.</p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-icon">🎯</div>
+          <div>
+            <strong>Objectif du mois</strong>
+            <p>Définissez un objectif concret (ex : nager 25m, surmonter la peur de l'eau...) et le niveau de l'enfant. L'IA génère un plan de progression sur 4 semaines. Validez chaque étape au fur et à mesure.</p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-icon">📓</div>
+          <div>
+            <strong>Carnet de suivi</strong>
+            <p>Notez vos observations après chaque séance, donnez une note sur 5 étoiles. Retrouvez l'historique complet et exportez-le en PDF pour garder une trace des progrès.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('coach',this)">💬 Conseils</button>
+    <button class="tab" onclick="switchTab('seance',this)">📅 Séance</button>
+    <button class="tab" onclick="switchTab('objectif',this)">🎯 Objectif</button>
+    <button class="tab" onclick="switchTab('carnet',this)">📓 Carnet</button>
+  </div>
+
+  <div id="tab-coach" class="panel active">
+    <div class="card">
+      <span class="label">Âge de l'élève</span>
+      <div class="chip-grid4">
+        <div class="chip" onclick="sel(this,'age','3-5')"><span class="emoji">🐣</span>3–5 ans</div>
+        <div class="chip" onclick="sel(this,'age','6-8')"><span class="emoji">🌱</span>6–8 ans</div>
+        <div class="chip" onclick="sel(this,'age','9-12')"><span class="emoji">⚡</span>9–12 ans</div>
+        <div class="chip" onclick="sel(this,'age','13+')"><span class="emoji">🚀</span>13+ ans</div>
+      </div>
+    </div>
+    <div class="card">
+      <span class="label">Niveau actuel</span>
+      <div class="chip-grid3">
+        <div class="chip" onclick="sel(this,'level','debutant')"><span class="emoji">🦆</span>Débutant<small>peur de l'eau</small></div>
+        <div class="chip" onclick="sel(this,'level','intermediaire')"><span class="emoji">🐠</span>Intermédiaire<small>flotte, technique insuffisante</small></div>
+        <div class="chip" onclick="sel(this,'level','avance')"><span class="emoji">🐬</span>Avancé<small>veut progresser</small></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="label" style="margin-bottom:0">Décrivez les difficultés observées</span>
+        <button id="voiceBtn" onclick="toggleVoice()" title="Dictée vocale" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid #d0d5dd;background:white;cursor:pointer;font-size:13px;color:#555;transition:all 0.15s;font-family:inherit">
+          🎙 Dicter
+        </button>
+      </div>
+      <textarea id="desc" placeholder="Ex : Difficultés à mettre la tête sous l'eau, corps qui coule à l'arrière, panique dès que les pieds ne touchent plus le fond..." oninput="checkReady()"></textarea>
+      <div id="voiceStatus" style="font-size:12px;color:#e05c00;margin-top:6px;display:none;align-items:center;gap:6px"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="label" style="margin-bottom:0">Vidéo ou image <span style="font-weight:400;color:#aaa">(optionnel)</span></span>
+        <span id="geminiBadge" style="display:none;font-size:11px;background:#e8f4e8;color:#2d7a2d;padding:3px 10px;border-radius:20px;border:1px solid #c3e6c3">✨ Analyse Gemini active</span>
+      </div>
+      <div class="upload-zone" id="dropzone" onclick="document.getElementById('fileIn').click()" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
+        <span class="upload-icon">🎥</span>
+        Cliquez ou glissez une vidéo ou image ici
+        <div style="font-size:11px;margin-top:4px;color:#aaa">MP4, MOV, PNG, JPG — Traitement optimisé léger</div>
+      </div>
+      <input type="file" id="fileIn" accept="video/*,image/*" style="display:none" onchange="handleFile(this.files[0])">
+      <div id="videoAnalysisResult" style="display:none;margin-top:10px;padding:12px;background:#f0f8f0;border-radius:8px;font-size:13px;color:#1a4a1a;line-height:1.7;border:1px solid #c3e6c3"></div>
+    </div>
+    <button class="btn-primary" id="analyzeBtn" onclick="analyze()" disabled>
+      ✨ Obtenir les conseils du coach
+    </button>
+    <div class="result-box" id="resultCard">
+      <div class="result-header">
+        <div class="result-header-icon">🏆</div>
+        <div class="result-title">Conseils personnalisés</div>
+      </div>
+      <div id="resultBody" class="result-body"></div>
+      <div class="yt-section" id="ytSection">
+        <div class="yt-label">▶ Voir les exercices en vidéo :</div>
+        <div class="yt-btns" id="ytBtns"></div>
+      </div>
+      <button class="btn-save" id="saveCoachBtn" style="display:none" onclick="saveCoachToCarnet()">
+        💾 Enregistrer dans le carnet
+      </button>
+      <button id="genSeanceFromCoachBtn" onclick="genSeanceFromCoach()" style="display:none;width:100%;margin-top:10px;padding:13px;font-size:15px;font-weight:600;background:linear-gradient(135deg,#E76F51,#c95a38);color:white;border:none;border-radius:30px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(231,111,81,0.3)">
+        📅 Générer une séance basée sur ces conseils
+      </button>
+    </div>
+  </div>
+
+  <div id="tab-seance" class="panel">
+    <div class="card">
+      <span class="label">Âge</span>
+      <div class="chip-grid4" style="margin-bottom:14px">
+        <div class="chip" onclick="sel2(this,'sage','3-5')"><span class="emoji">🐣</span>3–5 ans</div>
+        <div class="chip" onclick="sel2(this,'sage','6-8')"><span class="emoji">🌱</span>6–8 ans</div>
+        <div class="chip" onclick="sel2(this,'sage','9-12')"><span class="emoji">⚡</span>9–12 ans</div>
+        <div class="chip" onclick="sel2(this,'sage','13+')"><span class="emoji">🚀</span>13+ ans</div>
+      </div>
+      <span class="label">Niveau</span>
+      <div class="chip-grid3" style="margin-bottom:14px">
+        <div class="chip" onclick="sel2(this,'slevel','debutant')"><span class="emoji">🦆</span>Débutant</div>
+        <div class="chip" onclick="sel2(this,'slevel','intermediaire')"><span class="emoji">🐠</span>Intermédiaire</div>
+        <div class="chip" onclick="sel2(this,'slevel','avance')"><span class="emoji">🐬</span>Avancé</div>
+      </div>
+      <span class="label">Durée disponible</span>
+      <div class="chip-grid3">
+        <div class="chip" onclick="sel2(this,'sdur','20')"><span class="emoji">⚡</span>20 min</div>
+        <div class="chip" onclick="sel2(this,'sdur','45')"><span class="emoji">🕐</span>45 min</div>
+        <div class="chip" onclick="sel2(this,'sdur','60')"><span class="emoji">🏊</span>1 heure</div>
+      </div>
+    </div>
+    <button class="btn-primary" id="seanceBtn" onclick="genSeance()" disabled>
+      📅 Générer la séance du jour
+    </button>
+    <div class="result-box" id="seanceCard">
+      <div class="result-header">
+        <div class="result-header-icon">📅</div>
+        <div class="result-title" id="seanceTitle">Séance du jour</div>
+      </div>
+      <div id="seanceBody" class="result-body"></div>
+    </div>
+  </div>
+
+  <div id="tab-objectif" class="panel">
+    <div id="objSetup" class="card">
+      <span class="label-title">🎯 Objectif du mois</span>
+      <p style="font-size:13px;color:#888;margin-bottom:14px;line-height:1.6">Définissez un objectif précis. L'IA crée un plan de progression sur 4 semaines avec des étapes concrètes.</p>
+      <span class="label">Niveau</span>
+      <div class="chip-grid3" style="margin-bottom:14px">
+        <div class="chip" onclick="sel3(this,'olevel','debutant')"><span class="emoji">🦆</span>Débutant</div>
+        <div class="chip" onclick="sel3(this,'olevel','intermediaire')"><span class="emoji">🐠</span>Intermédiaire</div>
+        <div class="chip" onclick="sel3(this,'olevel','avance')"><span class="emoji">🐬</span>Avancé</div>
+      </div>
+      <span class="label">Objectif visé</span>
+      <input type="text" id="objGoal" placeholder="Ex : Nager 25m sans s'arrêter, maîtriser la respiration latérale..." oninput="checkObjReady()">
+      <button class="btn-primary" id="objBtn" onclick="genObjectif()" disabled style="margin-top:14px">
+        🎯 Générer le plan du mois
+      </button>
+    </div>
+    <div id="objDisplay" style="display:none">
+      <div class="obj-hero">
+        <div class="obj-hero-name" id="objName">—</div>
+        <div class="obj-hero-sub" id="objPeriod">—</div>
+        <div class="pbar-wrap"><div class="pbar-fill" id="objBar" style="width:0%"></div></div>
+        <div class="pbar-labels"><span id="objPct">0%</span><span id="objEtapes">0/4 étapes</span></div>
+      </div>
+      <div class="card">
+        <span class="label-title" style="margin-bottom:12px;display:block">Progression semaine par semaine</span>
+        <div id="milestonesList"></div>
+      </div>
+      <div class="obj-actions">
+        <button class="btn-outline" onclick="tickMilestone()">✅ Valider l'étape suivante</button>
+        <button class="btn-outline danger" onclick="resetObj()">🔄 Nouvel objectif</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-carnet" class="panel">
+    <div class="stats-row" id="statsRow" style="display:none">
+      <div class="stat-box"><div class="stat-num" id="statSeances">0</div><div class="stat-lbl">séances</div></div>
+      <div class="stat-box"><div class="stat-num" id="statMoy">—</div><div class="stat-lbl">note moyenne</div></div>
+      <div class="stat-box"><div class="stat-num" id="statMois">0</div><div class="stat-lbl">mois actifs</div></div>
+    </div>
+    <div class="card">
+      <span class="label-title">Ajouter une note de séance</span>
+      <input type="text" id="progressNote" placeholder="Ex : Séance réussie, alignement en nette amélioration !">
+      <div style="font-size:13px;color:#888;margin-top:14px;margin-bottom:4px">Comment s'est passée la séance ?</div>
+      <div class="stars" id="starsRow">
+        <span class="star" onclick="rateStar(1)">★</span>
+        <span class="star" onclick="rateStar(2)">★</span>
+        <span class="star" onclick="rateStar(3)">★</span>
+        <span class="star" onclick="rateStar(4)">★</span>
+        <span class="star" onclick="rateStar(5)">★</span>
+      </div>
+      <button class="btn-save" onclick="addProgress()">➕ Ajouter au carnet</button>
+    </div>
+    <div class="export-row">
+      <button class="btn-outline" onclick="exportPDF()">📄 Exporter le carnet (Texte)</button>
+      <button class="btn-outline danger" onclick="clearCarnet()">🗑 Vider le carnet</button>
+    </div>
+    <div id="progressList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────
+let GEMINI_KEY = 'proxy'; // clé gérée côté serveur
+let videoFile = null, videoBase64 = null, videoMime = null, geminiAnalysis = null;
+const S = { age:null, level:null, sage:null, slevel:null, sdur:null, olevel:null };
+let starRating = 0, lastExos = [], progress = [], currentObj = null;
+let recognition = null;
+
+try { const p = localStorage.getItem('swim_progress'); if(p) progress = JSON.parse(p); } catch(e){}
+try { const o = localStorage.getItem('swim_obj'); if(o) currentObj = JSON.parse(o); } catch(e){}
+
+window.onload = function() {
+  document.getElementById('apiScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  updateGeminiBadge(); renderCarnet(); renderStats();
+  if (currentObj) renderObjectif();
+}
+
+// ─── API KEY ──────────────────────────────────────────────────────────
+function saveKey() {
+  const gk = document.getElementById('geminiKeyInput').value.trim();
+  if (!gk) { toast('⚠️ Une clé Gemini est requise pour faire tourner l\'application.'); return; }
+  GEMINI_KEY = gk; localStorage.setItem('swim_gemini_key', gk);
+  document.getElementById('apiScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  updateGeminiBadge(); renderCarnet(); renderStats();
+  if (currentObj) renderObjectif();
+}
+
+function changeKey() {
+  localStorage.removeItem('swim_gemini_key');
+  GEMINI_KEY = '';
+  document.getElementById('geminiKeyInput').value = '';
+  document.getElementById('apiScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function updateGeminiBadge() {
+  const b = document.getElementById('geminiBadge'); if(b) b.style.display = GEMINI_KEY ? 'inline-block' : 'none';
+}
+
+function toggleGuide() {
+  const content = document.getElementById('guideContent');
+  const toggle = document.getElementById('guideToggle');
+  content.classList.toggle('open');
+  toggle.classList.toggle('open');
+}
+
+
+function switchTab(t, el) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  el.classList.add('active'); document.getElementById('tab-' + t).classList.add('active');
+  if (t === 'carnet') { renderCarnet(); renderStats(); }
+  if (t === 'objectif') { renderObjectif(); }
+}
+
+// ─── CHIPS ────────────────────────────────────────────────────────────
+function sel(el, g, v) { el.closest('.chip-grid4,.chip-grid3').querySelectorAll('.chip').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); S[g] = v; checkReady(); }
+function sel2(el, g, v) { el.closest('.chip-grid4,.chip-grid3').querySelectorAll('.chip').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); S[g] = v; checkSeanceReady(); }
+function sel3(el, g, v) { el.closest('.chip-grid4,.chip-grid3').querySelectorAll('.chip').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); S[g] = v; checkObjReady(); }
+function checkReady() { document.getElementById('analyzeBtn').disabled = !(S.age && S.level && document.getElementById('desc').value.trim().length >= 10); }
+function checkSeanceReady() { document.getElementById('seanceBtn').disabled = !(S.sage && S.slevel && S.sdur); }
+function checkObjReady() { document.getElementById('objBtn').disabled = !(S.olevel && document.getElementById('objGoal').value.trim().length >= 5); }
+
+// ─── UPLOAD & EXTRACTION D'IMAGES OPTIMISÉE ───────────────────────────
+function handleDrop(e) { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }
+function handleFile(f) {
+  if (!f) return;
+  videoFile = f; videoBase64 = null; videoMime = f.type; geminiAnalysis = null;
+  document.getElementById('videoAnalysisResult').style.display = 'none';
+  const dz = document.getElementById('dropzone');
+  dz.classList.add('has-file');
+  dz.innerHTML = `<span class="upload-icon">⏳</span><strong style="color:#0C447C">Optimisation de ${f.name}...</strong>`;
+  
+  if (f.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => { 
+      const parts = ev.target.result.split(',');
+      videoBase64 = parts[1]; 
+      videoMime = f.type;
+      dz.innerHTML = `<span class="upload-icon">📸</span><strong style="color:#0C447C">${f.name} (Prête)</strong>`;
+      if (GEMINI_KEY) startGeminiAnalysis(); 
+    };
+    reader.readAsDataURL(f);
+  } else if (f.type.startsWith('video/')) {
+    extractFramesFromVideo(f);
+  }
+}
+
+function extractFramesFromVideo(file) {
+  const video = document.createElement('video');
+  video.src = URL.createObjectURL(file);
+  video.muted = true; video.playsInline = true;
+  
+  video.onloadedmetadata = function() {
+    const duration = video.duration;
+    const numFrames = 6;
+    const interval = duration / (numFrames + 1);
+    let currentFrame = 1;
+    const frames = [];
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = 640; 
+    canvas.height = (video.videoHeight / video.videoWidth) * 640;
+    
+    function seekAndCapture() {
+      if (currentFrame <= numFrames) {
+        video.currentTime = currentFrame * interval;
+      } else {
+        assembleFrames(frames, canvas.width, canvas.height);
+      }
+    }
+    
+    video.onseeked = function() {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      frames.push(canvas.toDataURL('image/jpeg', 0.7)); 
+      currentFrame++;
+      seekAndCapture();
+    };
+    
+    seekAndCapture();
+  };
+  
+  video.onerror = function() {
+    const dz = document.getElementById('dropzone');
+    dz.innerHTML = `<span class="upload-icon">❌</span><strong style="color:#c0392b">Erreur de chargement vidéo</strong>`;
+  };
+}
+
+function assembleFrames(frames, w, h) {
+  const finalCanvas = document.createElement('canvas');
+  const finalCtx = finalCanvas.getContext('2d');
+  
+  finalCanvas.width = w * 2;
+  finalCanvas.height = h * 3;
+  
+  let loaded = 0;
+  frames.forEach((src, idx) => {
+    const img = new Image();
+    img.onload = function() {
+      const x = (idx % 2) * w;
+      const y = Math.floor(idx / 2) * h;
+      finalCtx.drawImage(img, x, y, w, h);
+      loaded++;
+      
+      if (loaded === frames.length) {
+        const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.8);
+        videoBase64 = dataUrl.split(',')[1];
+        videoMime = 'image/jpeg'; 
+        
+        const dz = document.getElementById('dropzone');
+        dz.innerHTML = `<span class="upload-icon">🎥</span><strong style="color:#0C447C">${videoFile.name} (Vidéo optimisée)</strong><div style="font-size:11px;color:#2d7a2d">Mosaïque générée avec succès</div>`;
+        if (GEMINI_KEY) startGeminiAnalysis();
+      }
+    };
+    img.src = src;
+  });
+}
+
+async function startGeminiAnalysis() {
+  const el = document.getElementById('videoAnalysisResult');
+  el.style.display = 'block';
+  el.innerHTML = '<span style="color:#555">🔍 Analyse technique Gemini en cours...</span>';
+  
+  if (!videoBase64 || videoBase64.length < 100) {
+    el.innerHTML = "<span style='color:#c0392b'>❌ Erreur : Les données de l'image sont corrompues ou incomplètes.</span>";
+    return;
+  }
+
+  const promptText = "Tu es un entraîneur de natation diplômé d'État spécialisé. Analyse cette série de captures d'écran chronologiques de l'élève dans l'eau. Repère les failles de nage (corps qui coule, tête trop haute, absence de battements, bras pliés...) et décris les anomalies de mouvement. Reste très pragmatique, concis, et donne ton diagnostic en français.";
+  
+  try {
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        contents: [{ 
+          parts: [
+            { text: promptText }, 
+            { inline_data: { mime_type: videoMime, data: videoBase64 } }
+          ] 
+        }] 
+      })
+    };
+
+    const res = await fetch("/api/gemini", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: requestOptions.body });
+    
+    if (!res.ok) { 
+      const err = await res.json(); 
+      throw new Error(err.error?.message || `Erreur HTTP ${res.status}`); 
+    }
+    
+    const data = await res.json();
+    geminiAnalysis = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    if (!geminiAnalysis) {
+      throw new Error("L'API a renvoyé une réponse vide.");
+    }
+
+    el.innerHTML = '<strong>✅ Analyse technique globale (Gemini) :</strong><br><br>' + parseMarkdown(geminiAnalysis);
+    toast('✅ Mouvements extraits et analysés !');
+  } catch(e) {
+    el.innerHTML = "<span style='color:#c0392b'>❌ Erreur d'analyse Gemini : " + e.message + "</span>";
+    console.error("Détails de l'erreur Gemini :", e);
+    geminiAnalysis = null;
+  }
+}
+
+// ─── GEMINI CENTRAL API (PROXY SERVEUR) ──────────────────────────────
+async function callGemini(systemInstruction, userMsg) {
+  const res = await fetch("/api/gemini", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+      systemInstruction: { parts: [{ text: systemInstruction }] }
+    })
+  });
+  
+  if (!res.ok) {
+    const e = await res.json();
+    throw new Error(e.error || 'Erreur API Gemini (' + res.status + ')');
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+function extractExos(text) {
+  const r = []; const lines = text.split('\n');
+  for (const line of lines) {
+    if (line.includes('🏊') || line.includes('EXERCICE')) {
+      const parts = line.split('|');
+      const namePart = parts[0].replace(/.*[—\-]\s*/, '').trim(); 
+      const ytPart = parts.length > 1 ? parts[1].replace(/YOUTUBE:\s*/i, '').trim() : '';
+      if (namePart && namePart.length > 2) { r.push({ label: namePart, query: ytPart || namePart }); }
+    }
+  }
+  return r;
+}
+
+function parseMarkdown(text) {
+  if (!text) return '';
+  let html = text;
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  html = html.replace(/^### (.*?)$/gm, '<h3 style="margin:12px 0 6px 0;font-size:16px;">$1</h3>');
+  html = html.replace(/^## (.*?)$/gm, '<h2 style="margin:16px 0 8px 0;font-size:18px;">$1</h2>');
+  html = html.replace(/^\s*-\s+(.*?)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*?<\/li>)/gs, '<ul style="margin-bottom:10px; padding-left:20px;">$1</ul>');
+  html = html.replace(/<\/ul>\s*<ul.*?>/g, '');
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+// ─── ANALYSE CONSEILS (NOW RUNNING VIA GEMINI) ───────────────────────
+async function analyze() {
+  const btn = document.getElementById('analyzeBtn'), rc = document.getElementById('resultCard'), rb = document.getElementById('resultBody');
+  const desc = document.getElementById('desc').value.trim();
+  btn.disabled = true; btn.innerHTML = `Analyse en cours...`;
+  rc.classList.remove('visible'); rb.textContent = ''; document.getElementById('ytSection').style.display = 'none'; document.getElementById('saveCoachBtn').style.display = 'none';
+  
+  const ages = {'3-5':'3 à 5 ans','6-8':'6 à 8 ans','9-12':'9 à 12 ans','13+':'13 ans et plus'};
+  const levels = { debutant:"débutant (peur de l'eau)", intermediaire:'intermédiaire (flotte sans technique)', avance:'avancé' };
+  
+  const sys = `Tu es un coach de natation expert. Tu donnes des conseils précis et bienveillants. Réponds en Markdown clair. Formate chaque exercice pratique conseillé avec la syntaxe stricte suivante pour l'extraction automatique : "🏊 EXERCICE X — [Nom de l'exercice] | YOUTUBE: [termes de recherche]"`;
+  
+  let userMsg = `Élève de ${ages[S.age]}, niveau ${levels[S.level]}.\nDifficultés signalées : ${desc}`;
+  if (geminiAnalysis) userMsg += `\n\nDonnées techniques issues de l'analyse d'images : ${geminiAnalysis}`;
+
+  try {
+    const text = await callGemini(sys, userMsg);
+
+    rb.innerHTML = parseMarkdown(text);
+    rc.classList.add('visible');
+    
+    lastExos = extractExos(text);
+    const ytb = document.getElementById('ytBtns'), yts = document.getElementById('ytSection');
+    ytb.innerHTML = '';
+    if (lastExos.length > 0) {
+      lastExos.forEach(ex => {
+        const a = document.createElement('a'); a.className = 'btn-yt'; a.target = '_blank';
+        a.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.query)}`;
+        a.innerHTML = `▶ Video : ${ex.label}`;
+        ytb.appendChild(a);
+      });
+      yts.style.display = 'block';
+    }
+    document.getElementById('saveCoachBtn').style.display = 'block';
+    // Stocker pour la séance personnalisée
+    window.lastCoachAnalysis = {
+      age: S.age, level: S.level,
+      description: document.getElementById('desc').value.trim(),
+      coachText: document.getElementById('resultBody').innerText,
+      geminiAnalysis: geminiAnalysis
+    };
+    // Afficher bouton séance personnalisée
+    const gcb = document.getElementById('genSeanceFromCoachBtn');
+    if (gcb) gcb.style.display = 'block';
+  } catch(e) {
+    rb.innerHTML = `<span style='color:#c0392b'>❌ Erreur : ${e.message}</span>`;
+    rc.classList.add('visible');
+  } finally {
+    btn.disabled = false; btn.innerHTML = `✨ Obtenir les conseils du coach`;
+  }
+}
+
+// ─── SÉANCE DEPUIS CONSEILS ──────────────────────────────────────────
+async function genSeanceFromCoach() {
+  if (!window.lastCoachAnalysis) { toast('Lancez les conseils du coach en premier'); return; }
+
+  // 1. Vider l'ancienne séance AVANT de basculer
+  document.getElementById('seanceCard').classList.remove('visible');
+  document.getElementById('seanceBody').innerHTML = '';
+
+  // 2. Basculer sur l'onglet Séance
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab')[1].classList.add('active');
+  document.getElementById('tab-seance').classList.add('active');
+
+  // 3. Pré-sélectionner âge et niveau
+  const ageMap = {'3-5':0,'6-8':1,'9-12':2,'13+':3};
+  const lvlMap = {'debutant':0,'intermediaire':1,'avance':2};
+  const ageChips = document.querySelectorAll('#tab-seance .chip-grid4 .chip');
+  const lvlChips = document.querySelectorAll('#tab-seance .chip-grid3 .chip');
+  ageChips.forEach(c => c.classList.remove('selected'));
+  lvlChips.forEach(c => c.classList.remove('selected'));
+  const ai = ageMap[window.lastCoachAnalysis.age];
+  const li = lvlMap[window.lastCoachAnalysis.level];
+  if (ageChips[ai] !== undefined) { ageChips[ai].classList.add('selected'); S.sage = window.lastCoachAnalysis.age; }
+  if (lvlChips[li] !== undefined) { lvlChips[li].classList.add('selected'); S.slevel = window.lastCoachAnalysis.level; }
+  // 45 min par défaut
+  const durChips = document.querySelectorAll('#tab-seance .chip-grid3:last-of-type .chip');
+  durChips.forEach(c => c.classList.remove('selected'));
+  if (durChips[1]) { durChips[1].classList.add('selected'); S.sdur = '45'; }
+
+  // 4. Lancer la génération directement
+  const btn = document.getElementById('seanceBtn');
+  const sc = document.getElementById('seanceCard');
+  const sb = document.getElementById('seanceBody');
+  btn.disabled = true; btn.innerHTML = 'Génération en cours...';
+
+  const sys = 'Tu es coach de natation expert. Cree une seance structuree (Echauffement, Corps, Jeu final) ciblant precisement les difficultes identifiees dans l analyse fournie. Pour chaque exercice, liste les instructions une par ligne numerotee. Adapte la difficulte au niveau de l enfant.';
+  // Nettoyer le coachText pour éviter les caractères qui cassent JSON
+  const coachCtx = (window.lastCoachAnalysis.coachText || '').replace(/\s+/g, ' ').trim().substring(0, 2000);
+  const videoCtx = window.lastCoachAnalysis.geminiAnalysis ? ('\n\nAnalyse video Gemini:\n' + window.lastCoachAnalysis.geminiAnalysis.replace(/\s+/g, ' ').trim().substring(0, 1000)) : '';
+  const userMsg = 'Profil enfant: Age ' + window.lastCoachAnalysis.age + ', Niveau ' + window.lastCoachAnalysis.level + ', Duree disponible 45 minutes.\n\nANALYSE DETAILLEE DU COACH (a utiliser comme base):\n' + coachCtx + videoCtx + '\n\nIMPORTANT: Cree une seance qui travaille SPECIFIQUEMENT les points faibles identifies ci-dessus. Ne genere pas une seance generique.';
+
+  try {
+    const text = await callGemini(sys, userMsg);
+    sb.innerHTML = parseMarkdown(text);
+    sc.classList.add('visible');
+    sc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    toast('Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '📅 Générer la séance du jour';
+  }
+}
+
+// ─── SÉANCE (NOW RUNNING VIA GEMINI) ──────────────────────────────────
+async function genSeance() {
+  const btn = document.getElementById('seanceBtn'), sc = document.getElementById('seanceCard'), sb = document.getElementById('seanceBody');
+  btn.disabled = true; btn.innerHTML = `Génération...`;
+  const sys = `Crée un programme de séance de natation amusant et structuré à réaliser (Échauffement, Corps de séance, Petit jeu/Défi de fin). Utilise le Markdown pour la clarté.`;
+  const userMsg = `Âge: ${S.sage}, Niveau: ${S.slevel}, Durée de séance: ${S.sdur} minutes.`;
+  try {
+    const text = await callGemini(sys, userMsg);
+    sb.innerHTML = parseMarkdown(text);
+    sc.classList.add('visible');
+  } catch(e) {
+    toast(`❌ Erreur : ${e.message}`);
+  } finally {
+    btn.disabled = false; btn.innerHTML = `📅 Générer la séance du jour`;
+  }
+}
+
+// ─── OBJECTIFS (NOW RUNNING VIA GEMINI) ───────────────────────────────
+async function genObjectif() {
+  const btn = document.getElementById('objBtn'); const goal = document.getElementById('objGoal').value.trim();
+  btn.disabled = true; btn.innerHTML = `Création du plan...`;
+  const sys = `Tu es un entraîneur de natation. Génère un plan d'apprentissage progressif sur 4 semaines au format JSON strict. L'objet retourné doit être exactement structuré ainsi sans texte superflu autour, sans balise markdown de bloc de code (pas de \`\`\`json) : {"title": "...", "milestones": ["Objectif semaine 1", "Objectif semaine 2", "Objectif semaine 3", "Objectif semaine 4"]}`;
+  try {
+    const text = await callGemini(sys, `Objectif global : ${goal}. Niveau : ${S.olevel}`);
+    const startIdx = text.indexOf('{'); const endIdx = text.lastIndexOf('}');
+    if(startIdx === -1 || endIdx === -1) throw new Error("Format de réponse invalide");
+    const json = JSON.parse(text.substring(startIdx, endIdx + 1));
+    currentObj = { name: json.title || goal, level: S.olevel, step: 0, items: json.milestones || [] };
+    localStorage.setItem('swim_obj', JSON.stringify(currentObj));
+    renderObjectif();
+  } catch(e) {
+    console.error(e);
+    toast(`❌ Erreur de génération. Veuillez réessayer.`);
+  } finally {
+    btn.disabled = false; btn.innerHTML = `🎯 Générer le plan du mois`;
+  }
+}
+
+function renderObjectif() {
+  if (!currentObj) {
+    document.getElementById('objSetup').style.display = 'block'; document.getElementById('objDisplay').style.display = 'none'; return;
+  }
+  document.getElementById('objSetup').style.display = 'none'; document.getElementById('objDisplay').style.display = 'block';
+  document.getElementById('objName').textContent = currentObj.name; document.getElementById('objPeriod').textContent = `Niveau : ${currentObj.level}`;
+  const pct = Math.round((currentObj.step / currentObj.items.length) * 100);
+  document.getElementById('objBar').style.width = pct + '%'; document.getElementById('objPct').textContent = pct + '%';
+  document.getElementById('objEtapes').textContent = `${currentObj.step}/${currentObj.items.length} étapes`;
+  const list = document.getElementById('milestonesList'); list.innerHTML = '';
+  currentObj.items.forEach((item, idx) => {
+    const isDone = idx < currentObj.step; const isCurrent = idx === currentObj.step;
+    list.innerHTML += `<div class="milestone-row">
+        <div class="m-icon ${isDone?'done':''} ${isCurrent?'current':''}">${isDone?'✓':idx+1}</div>
+        <div class="m-text ${isDone?'done':''}"><div class="m-week">Semaine ${idx+1}</div>${item}</div>
+      </div>`;
+  });
+}
+
+function tickMilestone() {
+  if (!currentObj) return;
+  if (currentObj.step < currentObj.items.length) {
+    currentObj.step++; localStorage.setItem('swim_obj', JSON.stringify(currentObj)); renderObjectif(); toast('🎉 Étape validée ! Bravo !');
+  }
+}
+
+function resetObj() { if(confirm('Supprimer cet objectif pour en créer un nouveau ?')) { currentObj = null; localStorage.removeItem('swim_obj'); renderObjectif(); } }
+
+// ─── CARNET & STATS ───────────────────────────────────────────────────
+function rateStar(n) { starRating = n; document.querySelectorAll('#starsRow .star').forEach((s, idx) => { s.classList.toggle('lit', idx < n); }); }
+function addProgress() {
+  const txt = document.getElementById('progressNote').value.trim(); if (!txt) { toast('⚠️ Veuillez écrire une note.'); return; }
+  const item = { id: Date.now(), date: new Date().toLocaleDateString('fr-FR'), note: txt, stars: starRating };
+  progress.unshift(item); localStorage.setItem('swim_progress', JSON.stringify(progress));
+  document.getElementById('progressNote').value = ''; rateStar(0); renderCarnet(); renderStats(); toast('Note enregistrée !');
+}
+
+function saveCoachToCarnet() {
+  const rb = document.getElementById('resultBody').innerText;
+  const item = { id: Date.now(), date: new Date().toLocaleDateString('fr-FR'), note: `💡 [Conseils du Coach] :\n${rb.substring(0, 300)}...`, stars: 5 };
+  progress.unshift(item); localStorage.setItem('swim_progress', JSON.stringify(progress)); toast('💾 Conseils sauvegardés dans le carnet !');
+}
+
+function deleteProgress(id) { progress = progress.filter(p => p.id !== id); localStorage.setItem('swim_progress', JSON.stringify(progress)); renderCarnet(); renderStats(); }
+function clearCarnet() { if(confirm('Voulez-vous vider tout votre historique ?')) { progress = []; localStorage.removeItem('swim_progress'); renderCarnet(); renderStats(); } }
+
+// ─── EXPORT TEXTE ─────────────────────────────────────────────────────
+function exportPDF() {
+  if (progress.length === 0) { toast('⚠️ Carnet vide.'); return; }
+  let txt = "=== CARNET DE SUIVI NATATION ===\n\n";
+  progress.forEach(p => { txt += `Date : ${p.date} | Note : ${p.stars}/5\n${p.note}\n---------------------------\n`; });
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'carnet_natation.txt'; a.click();
+}
+
+function renderCarnet() {
+  const list = document.getElementById('progressList'); list.innerHTML = '';
+  if(progress.length === 0) { list.innerHTML = '<div class="empty"><span class="empty-icon">📓</span>Aucune note pour le moment.</div>'; return; }
+  progress.forEach(p => {
+    let starsStr = '★'.repeat(p.stars) + '☆'.repeat(5-p.stars);
+    list.innerHTML += `<div class="progress-item">
+        <button class="del-btn" onclick="deleteProgress(${p.id})">🗑</button>
+        <div class="p-date">${p.date}</div>
+        <div class="p-note">${p.note.replace(/\n/g, '<br>')}</div>
+        <div class="p-badges"><span class="p-badge stars-badge">${starsStr}</span></div>
+      </div>`;
+  });
+}
+
+function renderStats() {
+  const row = document.getElementById('statsRow'); if (progress.length === 0) { row.style.display = 'none'; return; }
+  row.style.display = 'grid'; document.getElementById('statSeances').textContent = progress.length;
+  const totalStars = progress.reduce((acc, curr) => acc + curr.stars, 0);
+  document.getElementById('statMoy').textContent = (totalStars / progress.length).toFixed(1) + '/5';
+  document.getElementById('statMois').textContent = '1';
+}
+
+// ─── DICTÉE VOCALE ────────────────────────────────────────────────────
+function toggleVoice() {
+  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; if (!Speech) { toast('❌ Votre navigateur ne supporte pas la dictée vocale.'); return; }
+  if (recognition) { recognition.stop(); return; }
+  recognition = new Speech(); recognition.lang = 'fr-FR'; recognition.interimResults = false;
+  const status = document.getElementById('voiceStatus'); status.style.display = 'inline-flex'; status.innerHTML = '🎙️ Écoute en cours... Parlez.';
+  
+  recognition.onresult = function(e) {
+    const text = e.results[0][0].transcript; const area = document.getElementById('desc');
+    area.value = area.value ? area.value + ' ' + text : text; checkReady();
+  };
+  recognition.onend = function() { status.style.display = 'none'; recognition = null; };
+  recognition.onerror = function() { status.style.display = 'none'; recognition = null; toast('❌ Erreur lors de la capture vocale.'); };
+  recognition.start();
+}
+
+function toast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+</script>
+</body>
+</html>
