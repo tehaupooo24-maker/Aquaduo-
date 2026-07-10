@@ -13,10 +13,10 @@ module.exports = async function handler(req, res) {
       ? `IMPORTANT : La seance doit imperativement inclure et detailler ces exercices issus de l analyse du coach : ${coachExos}. Ne pas en inventer de nouveaux, uniquement detailler ceux-ci.`
       : '';
     const systemPrompt = `Tu es un coach de natation expert. Reponds UNIQUEMENT en JSON valide, sans markdown, sans backticks.
-REGLE : chaque exercice DOIT avoir un champ description avec les etapes numerotees 1. 2. 3. expliquant comment faire.
+REGLE IMPORTANTE : chaque exercice DOIT avoir une description DETAILLEE et REDIGEE en plusieurs phrases completes (5 a 8 phrases minimum), au meme niveau de detail et de qualite redactionnelle qu'un conseil de coach professionnel donne a un parent. Explique clairement : la position de depart, le mouvement precis a effectuer, la respiration, le nombre de repetitions ou la duree, et un conseil pratique pour le parent (comment encourager, quoi dire a l'enfant, comment corriger un geste). Ecris comme si tu expliquais a un parent qui n'a jamais fait ca, avec des phrases naturelles et completes, pas une liste telegraphique de mots-cles.
 ${exosInstruction}
 Format JSON strict :
-{"titre":"...","objectif":"...","etapes":[{"num":1,"nom":"...","description":"description generale","duree":"X min","exercices":[{"label":"nom court 3-5 mots","description":"1. Position de depart. 2. Mouvement des bras ou jambes. 3. Respiration. 4. Repeter X fois. Conseil parent.","query":"mots cles youtube natation"}]}]}`;
+{"titre":"...","objectif":"phrase complete decrivant l objectif general de la seance","etapes":[{"num":1,"nom":"...","description":"description generale de l etape en 1-2 phrases","duree":"X min","exercices":[{"label":"nom court 3-5 mots","description":"Description detaillee et redigee en 5 a 8 phrases completes expliquant la position de depart, le mouvement, la respiration, le nombre de repetitions, et un conseil pratique pour le parent.","query":"mots cles youtube natation"}]}]}`;
     const userMsg = lang === 'nl'
       ? `Leeftijd: ${age}, niveau: ${level}, tijd: ${duration} minuten.`
       : lang === 'en'
