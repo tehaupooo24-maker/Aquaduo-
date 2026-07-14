@@ -13,10 +13,11 @@ module.exports = async function handler(req, res) {
       ? `IMPORTANT : La seance doit imperativement inclure et detailler ces exercices issus de l analyse du coach : ${coachExos}. Ne pas en inventer de nouveaux, uniquement detailler ceux-ci.`
       : '';
     const systemPrompt = `Tu es un coach de natation expert. Reponds UNIQUEMENT en JSON valide, sans markdown, sans backticks.
-REGLE IMPORTANTE : chaque exercice DOIT avoir une description DETAILLEE et REDIGEE en plusieurs phrases completes (5 a 8 phrases minimum), au meme niveau de detail et de qualite redactionnelle qu'un conseil de coach professionnel donne a un parent. Explique clairement : la position de depart, le mouvement precis a effectuer, la respiration, le nombre de repetitions ou la duree, et un conseil pratique pour le parent (comment encourager, quoi dire a l'enfant, comment corriger un geste). Ecris comme si tu expliquais a un parent qui n'a jamais fait ca, avec des phrases naturelles et completes, pas une liste telegraphique de mots-cles.
+REGLE IMPORTANTE : chaque exercice DOIT avoir une description DETAILLEE et REDIGEE en plusieurs phrases completes (4 a 6 phrases, reste concis), au meme niveau de detail qu'un conseil de coach professionnel donne a un parent. Explique la position de depart, le mouvement precis, la respiration, le nombre de repetitions, et un conseil pratique pour le parent. Ecris des phrases naturelles et completes, pas une liste de mots-cles.
+IMPORTANT : reste concis pour que le JSON complet tienne dans la reponse. Maximum 4 etapes, maximum 2 exercices par etape.
 ${exosInstruction}
 Format JSON strict :
-{"titre":"...","objectif":"phrase complete decrivant l objectif general de la seance","etapes":[{"num":1,"nom":"...","description":"description generale de l etape en 1-2 phrases","duree":"X min","exercices":[{"label":"nom court 3-5 mots","description":"Description detaillee et redigee en 5 a 8 phrases completes expliquant la position de depart, le mouvement, la respiration, le nombre de repetitions, et un conseil pratique pour le parent.","query":"mots cles youtube natation"}]}]}`;
+{"titre":"...","objectif":"phrase complete decrivant l objectif general de la seance","etapes":[{"num":1,"nom":"...","description":"description generale de l etape en 1-2 phrases","duree":"X min","exercices":[{"label":"nom court 3-5 mots","description":"Description detaillee en 4 a 6 phrases completes.","query":"mots cles youtube natation"}]}]}`;
     const userMsg = lang === 'nl'
       ? `Leeftijd: ${age}, niveau: ${level}, tijd: ${duration} minuten.`
       : lang === 'en'
@@ -31,11 +32,49 @@ Format JSON strict :
       .replace(/[\u00A0]/g, ' ')
       .trim();
     const start = clean.indexOf('{');
-    const end = clean.lastIndexOf('}');
-    if (start === -1 || end === -1) throw new Error('Réponse Gemini invalide : pas de JSON trouvé');
-    const plan = JSON.parse(clean.slice(start, end + 1));
+    let end = clean.lastIndexOf('}');
+    if (start === -1) throw new Error('Réponse Gemini invalide : pas de JSON trouvé');
+
+    let jsonStr = end !== -1 ? clean.slice(start, end + 1) : clean.slice(start);
+    let plan;
+    try {
+      plan = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      // JSON tronqué : on tente de le réparer en fermant les structures ouvertes
+      const repaired = repairTruncatedJson(clean.slice(start));
+      try {
+        plan = JSON.parse(repaired);
+      } catch (secondErr) {
+        throw new Error('La séance générée était incomplète. Merci de réessayer.');
+      }
+    }
     return res.status(200).json(plan);
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
 };
+
+// Tente de réparer un JSON coupé en plein milieu (typiquement une réponse IA tronquée)
+// en retirant le dernier élément incomplet et en refermant les crochets/accolades ouverts.
+function repairTruncatedJson(str) {
+  let s = str;
+  // Coupe au dernier "}" ou "]" complet pour retirer un fragment incomplet en fin de chaîne
+  const lastGoodBrace = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
+  if (lastGoodBrace !== -1) s = s.slice(0, lastGoodBrace + 1);
+
+  // Compte les accolades/crochets ouverts non refermés, en ignorant ceux dans les chaînes
+  let depthCurly = 0, depthSquare = 0, inString = false, escape = false;
+  for (const ch of s) {
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depthCurly++;
+    else if (ch === '}') depthCurly--;
+    else if (ch === '[') depthSquare++;
+    else if (ch === ']') depthSquare--;
+  }
+  // Referme dans l'ordre inverse d'ouverture (approximation raisonnable pour ce cas d'usage)
+  s = s + ']'.repeat(Math.max(0, depthSquare)) + '}'.repeat(Math.max(0, depthCurly));
+  return s;
+}
