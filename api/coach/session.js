@@ -28,9 +28,11 @@ Format JSON strict :
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/g, '')
       .replace(/[\u2018\u2019]/g, "'")
-      .replace(/[\u201C\u201D]/g, '"')
       .replace(/[\u00A0]/g, ' ')
       .trim();
+    // NB : on ne remplace plus les guillemets doubles typographiques (\u201C\u201D)
+    // par des guillemets droits — ils sont valides tels quels en JSON, et les
+    // remplacer casse la chaîne si Gemini les utilise dans le texte généré.
     const start = clean.indexOf('{');
     let end = clean.lastIndexOf('}');
     if (start === -1) throw new Error('Réponse Gemini invalide : pas de JSON trouvé');
