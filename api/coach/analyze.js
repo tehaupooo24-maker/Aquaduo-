@@ -1,5 +1,6 @@
-const { getUserFromToken, getUserAccess } = require('../_supabase');
+const { getUserFromToken, getUserAccess, getSupabase } = require('../_supabase');
 const { callGemini } = require('../_gemini');
+const { checkAndConsumeQuota, DAILY_LIMIT } = require('../_usage');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -9,6 +10,9 @@ module.exports = async function handler(req, res) {
     const user = await getUserFromToken(token);
     const access = await getUserAccess(user.id);
     if (!access.hasPaid && !access.inTrial) return res.status(403).json({ error: 'NO_ACCESS' });
+    const supabase = getSupabase();
+    const quota = await checkAndConsumeQuota(supabase, user.id, 'coach_analyze');
+    if (!quota.allowed) return res.status(429).json({ error: 'LIMIT_REACHED', limit: DAILY_LIMIT });
     const { age, level, description, lang = 'fr' } = req.body;
     const systemPrompt = lang === 'nl'
       ? `Je bent een professionele zwemcoach. Geef concrete adviezen in het Nederlands. Gebruik 🏊 voor elke oefening. Formaat: 🏊 Naam — Uitleg | YOUTUBE: zoekterm`
