@@ -15,19 +15,29 @@ module.exports = async function handler(req, res) {
   const buf = await buffer(req);
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  // Verify signature manually without stripe package
+  if (!sig || !webhookSecret) {
+    return res.status(400).json({ error: 'Signature ou secret manquant.' });
+  }
+
+  const Stripe = require('stripe');
+  const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
   let event;
   try {
-    const payload = buf.toString('utf8');
-    event = JSON.parse(payload);
+    // Vérification CRYPTOGRAPHIQUE de la signature : seul Stripe, en possession
+    // du secret webhook, peut produire un événement qui passe cette vérification.
+    // Sans ça, n'importe qui peut forger une fausse confirmation de paiement.
+    event = stripe.webhooks.constructEvent(buf, sig, webhookSecret);
   } catch (e) {
-    return res.status(400).json({ error: 'Invalid payload' });
+    return res.status(400).json({ error: 'Signature invalide : ' + e.message });
   }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const userId = session.metadata?.user_id;
-    if (userId) {
+    // Sécurité supplémentaire : on ne débloque l'accès que si le paiement
+    // est effectivement confirmé payé côté Stripe.
+    if (userId && session.payment_status === 'paid') {
       const supabase = getSupabase();
       await supabase.from('profiles').update({ paid_at: new Date().toISOString() }).eq('id', userId);
     }
