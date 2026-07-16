@@ -1,5 +1,6 @@
-const { getUserFromToken, getUserAccess } = require('../_supabase');
+const { getUserFromToken, getUserAccess, getSupabase } = require('../_supabase');
 const { callGemini } = require('../_gemini');
+const { checkAndConsumeQuota, DAILY_LIMIT } = require('../_usage');
 
 function parseGeminiJson(raw) {
   // On ne touche PAS aux guillemets doubles typographiques (“ ”) : ils sont
@@ -47,6 +48,9 @@ module.exports = async function handler(req, res) {
     const user = await getUserFromToken(token);
     const access = await getUserAccess(user.id);
     if (!access.hasPaid && !access.inTrial) return res.status(403).json({ error: 'NO_ACCESS' });
+    const supabase = getSupabase();
+    const quota = await checkAndConsumeQuota(supabase, user.id, 'coach_objective');
+    if (!quota.allowed) return res.status(429).json({ error: 'LIMIT_REACHED', limit: DAILY_LIMIT });
     const { level, goal, lang = 'fr' } = req.body;
     const systemPrompt = `Tu es un coach de natation qui s'adresse à des PARENTS SANS AUCUNE CONNAISSANCE technique en natation. Génère un plan mensuel en JSON uniquement, sans markdown, sans backticks.
 REGLES IMPORTANTES :
