@@ -1,5 +1,4 @@
 const { getUserFromToken } = require('../_supabase');
-
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -15,6 +14,7 @@ module.exports = async function handler(req, res) {
       customer_email: user.email,
       line_items: [{ price_data: { currency: 'eur', unit_amount: 2999, product_data: { name: 'AquaDuo — Accès à vie' } }, quantity: 1 }],
       metadata: { user_id: user.id },
+      payment_intent_data: { metadata: { user_id: user.id } },
       success_url: `https://aquaduo.app?payment=success`,
       cancel_url: `https://aquaduo.app`,
     });
