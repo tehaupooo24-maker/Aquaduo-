@@ -43,5 +43,17 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  // Remboursement complet : on retire l'accès automatiquement.
+  // On n'agit que sur les remboursements TOTAUX (charge.refunded === true),
+  // pas sur les remboursements partiels, pour éviter de retirer l'accès à tort.
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object;
+    const userId = charge.metadata?.user_id;
+    if (userId && charge.refunded === true) {
+      const supabase = getSupabase();
+      await supabase.from('profiles').update({ paid_at: null }).eq('id', userId);
+    }
+  }
+
   return res.status(200).json({ received: true });
 };
