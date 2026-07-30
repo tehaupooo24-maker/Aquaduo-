@@ -20,6 +20,7 @@ module.exports = async function handler(req, res) {
     const systemPrompt = `Tu es un coach de natation expert. Reponds UNIQUEMENT en JSON valide, sans markdown, sans backticks.
 REGLE IMPORTANTE : chaque exercice DOIT avoir une description DETAILLEE et REDIGEE en plusieurs phrases completes (4 a 6 phrases, reste concis), au meme niveau de detail qu'un conseil de coach professionnel donne a un parent. Explique la position de depart, le mouvement precis, la respiration, le nombre de repetitions, et un conseil pratique pour le parent. Ecris des phrases naturelles et completes, pas une liste de mots-cles.
 IMPORTANT : reste concis pour que le JSON complet tienne dans la reponse. Maximum 4 etapes, maximum 2 exercices par etape.
+INTERDICTION ABSOLUE : n'utilise JAMAIS le caractere guillemet droit (") a l'interieur des textes (titre, description, nom, label, objectif). Pour mettre un mot en avant ou nommer un exercice de facon imagee, utilise des guillemets simples (par exemple : le mouvement du 'serpent qui rampe') ou reformule sans guillemets. Le caractere " est reserve exclusivement a la structure JSON elle-meme.
 ${exosInstruction}
 Format JSON strict :
 {"titre":"...","objectif":"phrase complete decrivant l objectif general de la seance","etapes":[{"num":1,"nom":"...","description":"description generale de l etape en 1-2 phrases","duree":"X min","exercices":[{"label":"nom court 3-5 mots","description":"Description detaillee en 4 a 6 phrases completes.","query":"mots cles youtube natation"}]}]}`;
@@ -47,13 +48,25 @@ Format JSON strict :
     try {
       plan = JSON.parse(jsonStr);
     } catch (parseErr) {
-      // JSON tronqué : on tente de le réparer en fermant les structures ouvertes
-      const repaired = repairTruncatedJson(clean.slice(start));
+      // Tentative 1 : réparer un guillemet droit égaré à l'intérieur d'un texte
+      // (ex: l'IA écrit "ramper le serpent" en emphase dans une description),
+      // qui casse le JSON puisque ce caractère délimite normalement les chaînes.
       try {
-        plan = JSON.parse(repaired);
-      } catch (secondErr) {
-        console.error('SESSION_JSON_PARSE_FAILED', parseErr.message, '---RAW LENGTH---', raw.length, '---RAW---', raw);
-        throw new Error('La séance générée était incomplète. Merci de réessayer.');
+        plan = JSON.parse(escapeStrayInnerQuotes(jsonStr));
+      } catch (quoteErr) {
+        // Tentative 2 : JSON tronqué (réponse coupée en plein milieu)
+        const repaired = repairTruncatedJson(clean.slice(start));
+        try {
+          plan = JSON.parse(repaired);
+        } catch (truncErr) {
+          // Tentative 3 : les deux problèmes combinés
+          try {
+            plan = JSON.parse(escapeStrayInnerQuotes(repaired));
+          } catch (secondErr) {
+            console.error('SESSION_JSON_PARSE_FAILED', parseErr.message, '---RAW LENGTH---', raw.length, '---RAW---', raw);
+            throw new Error('La séance générée était incomplète. Merci de réessayer.');
+          }
+        }
       }
     }
     return res.status(200).json(plan);
@@ -61,6 +74,35 @@ Format JSON strict :
     return res.status(500).json({ error: e.message });
   }
 };
+
+// Détecte les guillemets droits (") situés à l'intérieur d'une chaîne JSON
+// (pas ceux qui structurent réellement le JSON) et les échappe, pour les cas
+// où l'IA utilise des guillemets en emphase dans un texte malgré la consigne.
+function escapeStrayInnerQuotes(str) {
+  let result = '';
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (escape) { result += ch; escape = false; continue; }
+    if (ch === '\\') { result += ch; escape = true; continue; }
+    if (ch === '"') {
+      if (!inString) { inString = true; result += ch; continue; }
+      let j = i + 1;
+      while (j < str.length && /\s/.test(str[j])) j++;
+      const next = str[j];
+      if (next === ':' || next === ',' || next === '}' || next === ']' || next === undefined) {
+        inString = false;
+        result += ch;
+      } else {
+        result += '\\"';
+      }
+      continue;
+    }
+    result += ch;
+  }
+  return result;
+}
 
 // Tente de réparer un JSON coupé en plein milieu (typiquement une réponse IA tronquée)
 // en retirant le dernier élément incomplet et en refermant les crochets/accolades ouverts.
