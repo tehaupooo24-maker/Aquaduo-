@@ -1,6 +1,7 @@
 const { getUserFromToken, getUserAccess, getSupabase } = require('../_supabase');
 const { callGemini } = require('../_gemini');
 const { checkAndConsumeQuota, DAILY_LIMIT } = require('../_usage');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -51,7 +52,7 @@ Format JSON strict :
       try {
         plan = JSON.parse(repaired);
       } catch (secondErr) {
-        console.error('SESSION_JSON_PARSE_FAILED', parseErr.message, '---RAW---', raw);
+        console.error('SESSION_JSON_PARSE_FAILED', parseErr.message, '---RAW LENGTH---', raw.length, '---RAW---', raw);
         throw new Error('La séance générée était incomplète. Merci de réessayer.');
       }
     }
@@ -65,11 +66,9 @@ Format JSON strict :
 // en retirant le dernier élément incomplet et en refermant les crochets/accolades ouverts.
 function repairTruncatedJson(str) {
   let s = str;
-  // Coupe au dernier "}" ou "]" complet pour retirer un fragment incomplet en fin de chaîne
   const lastGoodBrace = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
   if (lastGoodBrace !== -1) s = s.slice(0, lastGoodBrace + 1);
 
-  // Compte les accolades/crochets ouverts non refermés, en ignorant ceux dans les chaînes
   let depthCurly = 0, depthSquare = 0, inString = false, escape = false;
   for (const ch of s) {
     if (escape) { escape = false; continue; }
@@ -81,7 +80,6 @@ function repairTruncatedJson(str) {
     else if (ch === '[') depthSquare++;
     else if (ch === ']') depthSquare--;
   }
-  // Referme dans l'ordre inverse d'ouverture (approximation raisonnable pour ce cas d'usage)
   s = s + ']'.repeat(Math.max(0, depthSquare)) + '}'.repeat(Math.max(0, depthCurly));
   return s;
 }
